@@ -1,0 +1,90 @@
+[
+  {
+    "bucket": "1",
+    "filename": "g4r21_bucket_1_20230915_1710_to_20230922_1549.csv",
+    "start": "2023-09-15T17:10:00",
+    "end": "2023-09-22T15:49:00",
+    "stride": "3k",
+    "gasifier": "G4R21"
+  },
+  {
+    "bucket": "2",
+    "filename": "g4r21_bucket_2_20230918_0418_to_20230925_0257.csv",
+    "start": "2023-09-18T04:18:00",
+    "end": "2023-09-25T02:57:00",
+    "stride": "3k",
+    "gasifier": "G4R21"
+  },
+  {
+    "bucket": "3",
+    "filename": "g4r21_bucket_3_20230920_1526_to_20230927_1405.csv",
+    "start": "2023-09-20T15:26:00",
+    "end": "2023-09-27T14:05:00",
+    "stride": "3k",
+    "gasifier": "G4R21"
+  },
+  {
+    "bucket": "4",
+    "filename": "g4r21_bucket_4_20230923_0234_to_20230930_0113.csv",
+    "start": "2023-09-23T02:34:00",
+    "end": "2023-09-30T01:13:00",
+    "stride": "3k",
+    "gasifier": "G4R21"
+  },
+  {
+    "bucket": "5",
+    "filename": "g4r21_bucket_5_20230925_1342_to_20231002_1221.csv",
+    "start": "2023-09-25T13:42:00",
+    "end": "2023-10-02T12:21:00",
+    "stride": "3k",
+    "gasifier": "G4R21"
+  },
+  {
+    "bucket": "6",
+    "filename": "g4r21_bucket_6_20230928_0050_to_20231004_2329.csv",
+    "start": "2023-09-28T00:50:00",
+    "end": "2023-10-04T23:29:00",
+    "stride": "3k",
+    "gasifier": "G4R21"
+  },
+  {
+    "bucket": "7",
+    "filename": "g4r21_bucket_7_20230930_1158_to_20231007_1037.csv",
+    "start": "2023-09-30T11:58:00",
+    "end": "2023-10-07T10:37:00",
+    "stride": "3k",
+    "gasifier": "G4R21"
+  },
+  {
+    "bucket": "8",
+    "filename": "g4r21_bucket_8_20231003_2306_to_20231010_2145.csv",
+    "start": "2023-10-03T23:06:00",
+    "end": "2023-10-10T21:45:00",
+    "stride": "3k",
+    "gasifier": "G4R21"
+  },
+  {
+    "bucket": "9",
+    "filename": "g4r21_bucket_9_20231006_1014_to_20231013_0853.csv",
+    "start": "2023-10-06T10:14:00",
+    "end": "2023-10-13T08:53:00",
+    "stride": "3k",
+    "gasifier": "G4R21"
+  },
+  {
+    "bucket": "10",
+    "filename": "g4r21_bucket_10_20231009_2122_to_20231016_2001.csv",
+    "start": "2023-10-09T21:22:00",
+    "end": "2023-10-16T20:01:00",
+    "stride": "3k",
+    "gasifier": "G4R21"
+  },
+  {
+    "bucket": "11",
+    "filename": "g4r21_bucket_11_20231012_0830_to_20231019_0709.csv",
+    "start": "2023-10-12T08:30:00",
+    "end": "2023-10-19T07:09:00",
+    "stride": "3k",
+    "gasifier": "G4R21"
+  }
+]

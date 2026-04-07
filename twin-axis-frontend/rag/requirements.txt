@@ -1,0 +1,31 @@
+# Web Framework
+fastapi
+uvicorn[standard]
+python-multipart
+
+# Data Processing
+pandas
+numpy
+scipy
+
+# PDF Processing
+PyPDF2
+
+# LangChain Core
+langchain
+langchain-core
+langchain-community
+langchain-text-splitters
+
+# LangChain Integrations
+langchain-huggingface
+langchain-google-genai
+
+# Vector Store
+faiss-cpu
+
+# Embeddings & ML
+sentence-transformers
+
+# Environment Variables
+python-dotenv

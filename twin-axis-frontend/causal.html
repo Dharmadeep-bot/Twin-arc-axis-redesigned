@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Causal Twin v29 (Physics & Electron Glow)</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <style>
+        /* --- THEME VARIABLES --- */
+        :root {
+            /* DARK MODE (DEFAULT) */
+            --bg-canvas: #0b0c10;
+            --bg-panel: rgba(11, 12, 16, 0.9);
+            --border-panel: rgba(102, 252, 241, 0.2); /* Cyan-ish border for tech feel */
+            --text-primary: #e0e0e0;
+            --text-secondary: #8892b0;
+            --input-bg: rgba(255, 255, 255, 0.05);
+            --accent-primary: #45a29e; /* Teal */
+            --accent-glow: rgba(69, 162, 158, 0.4);
+            --danger: #ff4d4d;
+            --gold: #ffc107;
+        }
+
+        body.light-mode {
+            /* LIGHT MODE */
+            --bg-canvas: #f0f4f8;
+            --bg-panel: rgba(255, 255, 255, 0.95);
+            --border-panel: rgba(0, 0, 0, 0.1);
+            --text-primary: #102a43;
+            --text-secondary: #486581;
+            --input-bg: rgba(0, 0, 0, 0.03);
+            --accent-primary: #0077cc;
+            --accent-glow: rgba(0, 119, 204, 0.3);
+            --danger: #d0021b;
+            --gold: #d48806;
+        }
+
+        body { margin: 0; padding: 0; overflow: hidden; font-family: 'Inter', sans-serif; background: var(--bg-canvas); color: var(--text-primary); transition: background 0.3s; }
+        
+        /* UI PANELS */
+        .ui-panel {
+            position: absolute; z-index: 50;
+            background: var(--bg-panel); backdrop-filter: blur(12px);
+            border: 1px solid var(--border-panel); border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+
+        /* TOOLBAR */
+        .toolbar { 
+            top: 20px; left: 20px; padding: 8px; 
+            display: flex; flex-direction: column; gap: 8px; width: 44px; 
+        }
+        
+        .icon-btn {
+            background: transparent; border: 1px solid transparent; color: var(--text-secondary);
+            width: 40px; height: 40px; border-radius: 8px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; transition: 0.2s;
+        }
+        .icon-btn:hover { background: var(--input-bg); color: var(--accent-primary); }
+        .icon-btn.active { background: var(--accent-primary); color: #fff; box-shadow: 0 0 10px var(--accent-glow); }
+        .icon-btn.danger:hover { color: var(--danger); background: rgba(255, 77, 77, 0.1); }
+        
+        .divider { height: 1px; width: 24px; background: var(--border-panel); margin: 4px auto; opacity: 0.4; }
+
+        /* HEADER */
+        .top-right-group { position: absolute; top: 20px; right: 20px; z-index: 60; display: flex; gap: 12px; align-items: center; }
+
+        .view-pill { padding: 4px; border-radius: 50px; display: flex; border: 1px solid var(--border-panel); }
+        .view-btn { 
+            padding: 8px 18px; border-radius: 40px; border: none; background: transparent; 
+            color: var(--text-secondary); font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: 0.3s;
+        }
+        .view-btn.active { background: var(--accent-primary); color: #fff; }
+
+        .theme-btn { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid var(--border-panel); background: var(--bg-panel); color: var(--text-primary); }
+        .theme-btn:hover { background: var(--input-bg); }
+
+        /* INSPECTOR */
+        .inspector { 
+            top: 80px; right: 20px; width: 280px; padding: 0; 
+            transform: translateX(350px); opacity: 0; display: flex; flex-direction: column;
+            max-height: calc(100vh - 120px);
+        }
+        .inspector.visible { transform: translateX(0); opacity: 1; }
+
+        .inspector-header { padding: 14px 18px; border-bottom: 1px solid var(--border-panel); display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 0.95rem; }
+        .inspector-body { padding: 18px; overflow-y: auto; }
+
+        .control-group { margin-bottom: 18px; }
+        .label { display: block; font-size: 0.7rem; font-weight: 700; color: var(--accent-primary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9; }
+        
+        input[type="text"], input[type="number"], select { 
+            width: 100%; box-sizing: border-box; background: var(--input-bg); 
+            border: 1px solid var(--border-panel); color: var(--text-primary); 
+            padding: 10px; border-radius: 6px; font-size: 0.9rem; outline: none; transition: 0.2s;
+        }
+        input:focus, select:focus { border-color: var(--accent-primary); }
+
+        /* PHYSICS PANEL */
+        .physics-panel { bottom: 30px; left: 50%; transform: translateX(-50%); padding: 10px 24px; width: 240px; text-align: center; }
+        input[type="range"] { -webkit-appearance: none; width: 100%; background: transparent; margin-top: 8px; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--accent-primary); cursor: pointer; margin-top: -6px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+        input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: var(--text-secondary); border-radius: 2px; opacity: 0.3; }
+
+        /* CANVASES */
+        #network-2d, #network-3d { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; }
+        #network-3d { z-index: 10; display: none; background: transparent; }
+
+        .toast {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: var(--bg-panel); color: var(--text-primary); padding: 12px 24px;
+            border-radius: 8px; border: 1px solid var(--accent-primary); font-size: 0.95rem; font-weight: 500;
+            opacity: 0; pointer-events: none; transition: 0.3s; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .toast.show { opacity: 1; margin-top: -20px; }
+    </style>
+</head>
+<body>
+
+    <div class="top-right-group">
+        <div class="ui-panel view-pill" style="position:static; transform:none;">
+            <button class="view-btn active" id="btn2D" onclick="switchView('2d')">Editor</button>
+            <button class="view-btn" id="btn3D" onclick="switchView('3d')">3D Flow</button>
+        </div>
+    </div>
+
+    <div class="ui-panel toolbar">
+        <button class="icon-btn" onclick="addNode()" title="Add Node"><i data-lucide="plus-circle" size="22"></i></button>
+        <button class="icon-btn" id="btnConnect" onclick="toggleConnect()" title="Connect"><i data-lucide="link" size="22"></i></button>
+        <button class="icon-btn" id="btnFocus" onclick="toggleFocusMode()" title="Focus Path"><i data-lucide="crosshair" size="22"></i></button>
+        
+        <div class="divider"></div>
+        
+        <button class="icon-btn" onclick="fitGraph()" title="Fit View"><i data-lucide="focus" size="22"></i></button>
+        <button class="icon-btn" id="btnFreeze" onclick="togglePhysics()" title="Freeze Layout"><i data-lucide="snowflake" size="22"></i></button>
+        <button class="icon-btn" onclick="exportGraph()" title="Export JSON"><i data-lucide="download" size="22"></i></button>
+        
+        <div class="divider"></div>
+        
+        <button class="icon-btn danger" onclick="deleteSelected()" title="Delete"><i data-lucide="trash-2" size="22"></i></button>
+    </div>
+
+    <div class="ui-panel physics-panel">
+        <span class="label">Layout Spacing</span>
+        <input type="range" id="springLen" min="50" max="600" value="250" oninput="updatePhysics()">
+    </div>
+
+    <div class="ui-panel inspector" id="inspector">
+        <div class="inspector-header">
+            <span id="inspectorTitle">Properties</span>
+            <button class="icon-btn" style="width:28px; height:28px; border:none;" onclick="closeInspector()"><i data-lucide="x" size="18"></i></button>
+        </div>
+        <div class="inspector-body">
+            
+            <div id="nodeSettings" style="display:none;">
+                <div class="control-group">
+                    <span class="label">Node Name</span>
+                    <input type="text" id="nodeLabel" oninput="updateNode()">
+                </div>
+                <div class="control-group">
+                    <span class="label">Status Color</span>
+                    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
+                        <div style="height:30px; background:#45a29e; border-radius:4px; cursor:pointer;" onclick="setNodeColor('#1a1a1a', '#45a29e')"></div> <div style="height:30px; background:#ffc107; border-radius:4px; cursor:pointer;" onclick="setNodeColor('#1a1a1a', '#ffc107')"></div> <div style="height:30px; background:#ff4d4d; border-radius:4px; cursor:pointer;" onclick="setNodeColor('#000000', '#ff4d4d')"></div> <div style="height:30px; background:#e0e0e0; border-radius:4px; cursor:pointer;" onclick="setNodeColor('#1a1a1a', '#e0e0e0')"></div> </div>
+                </div>
+                <div class="control-group">
+                    <span class="label">Size</span>
+                    <input type="range" id="nodeSize" min="20" max="80" value="30" oninput="updateNode()">
+                </div>
+            </div>
+
+            <div id="edgeSettings" style="display:none;">
+                <div class="control-group">
+                    <span class="label">Causal Weight</span>
+                    <input type="number" id="edgeWeight" step="0.1" value="1.0" oninput="updateEdge()">
+                </div>
+                 <div class="control-group">
+                    <span class="label">Line Width</span>
+                    <input type="range" id="edgeWidth" min="1" max="10" value="2" oninput="updateEdge()">
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Action Completed</div>
+
+    <div id="network-2d"></div>
+    <div id="network-3d"></div>
+
+<script>
+    lucide.createIcons();
+
+    /* =========================================
+       1. DATA & THEME SETUP
+       ========================================= */
+    let isLightMode = false;
+    const colors = {
+        normal: '#45a29e', // Teal
+        warning: '#ffc107', // Gold
+        critical: '#ff4d4d', // Red
+        darkNode: '#111111',
+        lightNode: '#ffffff',
+        textDark: '#e0e0e0',
+        textLight: '#102a43'
+    };
+
+    /* PHYSICS-CORRECTED GRAPH:
+       Market Price is removed from the mechanical failure chain.
+       Chain: Wind -> RPM -> Vibration -> Temp -> Failure
+    */
+    const nodes = new vis.DataSet([
+        // External Inputs
+        { id: 1, label: 'Weather Data', shape: 'dot', group:'input', color: { background: colors.darkNode, border: colors.normal } },
+        { id: 2, label: 'Market Price', shape: 'dot', group:'input', color: { background: colors.darkNode, border: colors.warning } }, // Business only
+        
+        // Mechanical / Physics Chain
+        { id: 3, label: 'Wind Speed', shape: 'dot', group:'physics', color: { background: colors.darkNode, border: colors.normal } },
+        { id: 4, label: 'Rotor RPM', shape: 'dot', group:'physics', color: { background: colors.darkNode, border: colors.normal } },
+        { id: 5, label: 'Turbine Pitch', shape: 'dot', group:'physics', color: { background: colors.darkNode, border: colors.normal } },
+        
+        // Stressors & Sensors
+        { id: 6, label: 'Vibration Spike', shape: 'dot', group:'sensor', color: { background: colors.darkNode, border: colors.critical }, shadow:{enabled:true, color:colors.critical, size:15} },
+        { id: 7, label: 'Bearing Temp', shape: 'dot', group:'sensor', color: { background: colors.darkNode, border: colors.critical }, shadow:{enabled:true, color:colors.critical, size:15} },
+        
+        // Outcome
+        { id: 8, label: 'Grid Demand', shape: 'dot', group:'biz', color: { background: colors.darkNode, border: colors.warning } },
+        { id: 9, label: 'Predicted Failure', shape: 'dot', size: 50, group:'outcome', color: { background: '#000', border: colors.critical }, font: { size: 16, color: colors.critical, face: 'Inter', weight: '700' }, shadow: { enabled: true, color: colors.critical, size: 30 } }
+    ]);
+
+    const edges = new vis.DataSet([
+        // Physics Flow
+        { from: 1, to: 3, label: '1.0', arrows: 'to' }, // Weather -> Wind Speed
+        { from: 3, to: 4, label: '0.9', arrows: 'to' }, // Wind Speed -> RPM
+        { from: 5, to: 4, label: '-0.5', arrows: 'to' }, // Pitch limits RPM
+        
+        // Failure Mode Path (The "Flow" of Particles)
+        { from: 4, to: 6, label: 'Over-speed', arrows: 'to', width: 3, color: {color: colors.critical} }, // RPM -> Vibration
+        { from: 6, to: 7, label: 'Friction', arrows: 'to', width: 4, color: {color: colors.critical} }, // Vibration -> Temp
+        { from: 7, to: 9, label: '>95%', arrows: 'to', width: 5, color: {color: colors.critical} }, // Temp -> Failure
+
+        // Business Logic (Isolated from Physics)
+        { from: 2, to: 8, label: '-0.8', arrows: 'to', dashes:true, color: {color: colors.warning} }, // Price -> Demand
+        { from: 3, to: 8, label: '0.4', arrows: 'to', dashes:true, color: {color: colors.warning} }   // Wind -> Demand (Generation)
+    ]);
+
+    const container = document.getElementById('network-2d');
+    const options = {
+        physics: { 
+            enabled: true, 
+            barnesHut: { gravitationalConstant: -8000, centralGravity: 0.1, springLength: 220, damping: 0.2 },
+            stabilization: { iterations: 200 } 
+        },
+        nodes: {
+            font: { face: 'Inter', color: colors.textDark, strokeWidth: 5, strokeColor: '#0b0c10', size: 14 },
+            borderWidth: 2,
+            shape: 'dot', size: 30,
+            shadow: { enabled: true, color: 'rgba(69, 162, 158, 0.3)', size: 10, x:0, y:0 }
+        },
+        edges: {
+            smooth: { type: 'dynamic', roundness: 0.5 },
+            font: { background: '#0b0c10', color: colors.normal, strokeWidth:0, size:11 },
+            width: 2,
+            color: { color: '#555', highlight: colors.normal, hover: colors.normal },
+            arrows: { to: { enabled: true, scaleFactor:1 } }
+        },
+        interaction: { hover: true, multiselect: true, zoomView: true }
+    };
+
+    const network = new vis.Network(container, { nodes, edges }, options);
+    
+    network.once("afterDrawing", () => network.fit({ animation: { duration: 1500, easingFunction: "easeInOutQuad" } }));
+
+    /* =========================================
+       2. INTERACTION LOGIC
+       ========================================= */
+    let connectMode = false; let sourceNode = null; let focusMode = false; let physicsEnabled = true;
+    let selNodeId = null; let selEdgeId = null;
+
+    network.on("click", (params) => {
+        if (connectMode && params.nodes.length === 1) handleConnect(params.nodes[0]);
+        else if (params.nodes.length === 1) { handleSelectNode(params.nodes[0]); openInspector('node', params.nodes[0]); }
+        else if (params.edges.length === 1 && params.nodes.length === 0) openInspector('edge', params.edges[0]);
+        else { closeInspector(); if(focusMode) resetFocus(); }
+    });
+
+    function toggleTheme() {
+        isLightMode = !isLightMode;
+        document.body.classList.toggle('light-mode', isLightMode);
+        document.getElementById('themeIcon').setAttribute('data-lucide', isLightMode ? 'moon' : 'sun');
+        lucide.createIcons();
+        
+        // Update Graph Colors
+        const textColor = isLightMode ? colors.textLight : colors.textDark;
+        const strokeColor = isLightMode ? '#ffffff' : '#0b0c10';
+        const bgLabel = isLightMode ? '#ffffff' : '#0b0c10';
+
+        options.nodes.font.color = textColor;
+        options.nodes.font.strokeColor = strokeColor;
+        options.edges.font.background = bgLabel;
+        
+        nodes.forEach(n => {
+            if(n.color.background === colors.darkNode || n.color.background === colors.lightNode) {
+                nodes.update({ id: n.id, color: { background: isLightMode ? colors.lightNode : colors.darkNode } });
+            }
+        });
+
+        network.setOptions(options);
+        if(scene) init3D(); // Refresh 3D
+    }
+
+    function toggleConnect() {
+        connectMode = !connectMode;
+        document.getElementById('btnConnect').classList.toggle('active');
+        sourceNode = null;
+        showToast(connectMode ? "Select Source Node" : "Connect OFF");
+    }
+
+    function handleConnect(id) {
+        if(!sourceNode) { sourceNode = id; showToast("Target Node?"); }
+        else {
+            if(sourceNode !== id) edges.add({ from: sourceNode, to: id, label:'1.0', arrows:'to' });
+            toggleConnect();
+            if(scene) init3D();
+        }
+    }
+
+    function toggleFocusMode() {
+        focusMode = !focusMode;
+        document.getElementById('btnFocus').classList.toggle('active');
+        if(!focusMode) resetFocus();
+    }
+
+    function handleSelectNode(nodeId) {
+        if(!focusMode) return;
+        const connectedNodes = network.getConnectedNodes(nodeId);
+        const connectedEdges = network.getConnectedEdges(nodeId);
+        nodes.forEach(n => {
+            const active = n.id === nodeId || connectedNodes.includes(n.id);
+            nodes.update({ id: n.id, color: { opacity: active ? 1 : 0.1 } });
+        });
+        edges.forEach(e => {
+            const active = connectedEdges.includes(e.id);
+            edges.update({ id: e.id, color: { opacity: active ? 1 : 0.05 } });
+        });
+    }
+
+    function resetFocus() {
+        nodes.forEach(n => nodes.update({ id: n.id, color: { opacity: 1 } }));
+        edges.forEach(e => edges.update({ id: e.id, color: { opacity: 1 } }));
+    }
+
+    function togglePhysics() {
+        physicsEnabled = !physicsEnabled;
+        document.getElementById('btnFreeze').classList.toggle('active');
+        network.setOptions({ physics: { enabled: physicsEnabled } });
+        showToast(physicsEnabled ? "Physics Unfrozen" : "Physics Frozen");
+    }
+
+    function updatePhysics() { network.setOptions({ physics: { barnesHut: { springLength: parseInt(document.getElementById('springLen').value) } } }); }
+    function fitGraph() { network.fit({ animation: true }); }
+    
+    function exportGraph() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ nodes: nodes.get(), edges: edges.get() }));
+        const anchor = document.createElement('a');
+        anchor.setAttribute("href", dataStr); anchor.setAttribute("download", "causal_model.json");
+        document.body.appendChild(anchor); anchor.click(); anchor.remove();
+        showToast("Model Exported");
+    }
+
+    function addNode() {
+        const id = nodes.length + 100;
+        nodes.add({ id, label: 'New Factor', shape: 'dot', color: { background: isLightMode?colors.lightNode:colors.darkNode, border: colors.normal } });
+        openInspector('node', id);
+        if(scene) init3D();
+    }
+    
+    function deleteSelected() {
+        const sel = network.getSelection();
+        nodes.remove(sel.nodes); edges.remove(sel.edges);
+        closeInspector();
+        if(scene) init3D();
+    }
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg; t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
+    /* --- INSPECTOR --- */
+    function openInspector(type, id) {
+        document.getElementById('inspector').classList.add('visible');
+        document.getElementById('nodeSettings').style.display = type === 'node' ? 'block' : 'none';
+        document.getElementById('edgeSettings').style.display = type === 'edge' ? 'block' : 'none';
+        
+        if(type==='node') {
+            selNodeId = id; selEdgeId = null;
+            const n = nodes.get(id);
+            document.getElementById('nodeLabel').value = n.label;
+            document.getElementById('nodeSize').value = n.size || 30;
+        } else {
+            selEdgeId = id; selNodeId = null;
+            const e = edges.get(id);
+            document.getElementById('edgeWeight').value = e.label || "1.0";
+            document.getElementById('edgeWidth').value = e.width || 2;
+        }
+    }
+    function closeInspector() { document.getElementById('inspector').classList.remove('visible'); }
+    function updateNode() { if(selNodeId) nodes.update({ id: selNodeId, label: document.getElementById('nodeLabel').value, size: parseInt(document.getElementById('nodeSize').value) }); if(scene) init3D(); }
+    function setNodeColor(bg, border) { if(selNodeId) nodes.update({ id: selNodeId, color:{background:bg, border:border} }); if(scene) init3D(); }
+    function updateEdge() { if(selEdgeId) edges.update({ id: selEdgeId, label: document.getElementById('edgeWeight').value, width: parseInt(document.getElementById('edgeWidth').value) }); if(scene) init3D(); }
+
+    /* =========================================
+       3. 3D SIMULATION (CRYSTAL CLEAR + GLOW)
+       ========================================= */
+    let scene, camera, renderer, controls, animationId;
+    const container3D = document.getElementById('network-3d');
+    let particleSystems = [];
+    let labels = [];
+
+    function switchView(mode) {
+        const is3D = mode === '3d';
+        document.getElementById('btn2D').classList.toggle('active', !is3D);
+        document.getElementById('btn3D').classList.toggle('active', is3D);
+        if(is3D) { container3D.style.display = 'block'; init3D(); }
+        else { container3D.style.display = 'none'; if(animationId) cancelAnimationFrame(animationId); }
+    }
+
+    function init3D() {
+        container3D.innerHTML = '';
+        particleSystems = [];
+        labels = [];
+        
+        scene = new THREE.Scene();
+        const bgCol = isLightMode ? 0xf0f4f8 : 0x0b0c10;
+        scene.background = new THREE.Color(bgCol);
+        
+        // NO FOG for crystal clear visibility
+        
+        camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 1, 5000);
+        camera.position.set(0, 300, 600);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        container3D.appendChild(renderer.domElement);
+        
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // --- HIGH QUALITY LIGHTING ---
+        const ambient = new THREE.AmbientLight(0xffffff, 0.9); // Bright ambient
+        scene.add(ambient);
+        
+        const mainSun = new THREE.DirectionalLight(0xffffff, 1.0);
+        mainSun.position.set(100, 200, 100);
+        scene.add(mainSun);
+
+        const fillLight = new THREE.DirectionalLight(isLightMode ? 0xffffff : 0x445566, 0.6);
+        fillLight.position.set(-100, 50, -100);
+        scene.add(fillLight);
+
+        // Build Graph
+        const positions = network.getPositions();
+        const nodeMap = {};
+        const getZ = (id) => ((id * 53) % 160) - 80; // Deterministic Z
+
+        // 1. Create Nodes
+        nodes.forEach(n => {
+            const p = positions[n.id] || {x:0, y:0};
+            const col = new THREE.Color(n.color.border || colors.normal);
+            
+            // Core Sphere (Glossy)
+            const geo = new THREE.SphereGeometry((n.size||30)*0.7, 48, 48);
+            const mat = new THREE.MeshPhysicalMaterial({
+                color: isLightMode ? 0xffffff : 0x111111,
+                emissive: col, emissiveIntensity: 0.4,
+                roughness: 0.1, metalness: 0.3, 
+                clearcoat: 1.0, clearcoatRoughness: 0.05
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(p.x, -p.y, getZ(n.id));
+            scene.add(mesh);
+            nodeMap[n.id] = mesh.position;
+
+            // Text Label (Always Visible)
+            const labelSprite = createLabel(n.label, isLightMode);
+            labelSprite.position.copy(mesh.position);
+            labelSprite.position.y += (n.size||30) + 20;
+            scene.add(labelSprite);
+        });
+
+        // 2. Create Connections & Electron Glow
+        edges.forEach(e => {
+            const s = nodeMap[e.from];
+            const t = nodeMap[e.to];
+            if(s && t) {
+                // Connection Curve
+                const dist = s.distanceTo(t);
+                const mid = new THREE.Vector3().lerpVectors(s, t, 0.5);
+                mid.y += dist * 0.2; // Arching
+                const curve = new THREE.QuadraticBezierCurve3(s, mid, t);
+                
+                // Visible Tube
+                const tubeGeo = new THREE.TubeGeometry(curve, 32, (e.width||2)*0.5, 8, false);
+                const isCrit = e.color?.color === colors.critical;
+                const tubeMat = new THREE.MeshStandardMaterial({ 
+                    color: isCrit ? 0xff4d4d : (isLightMode ? 0xaabbee : 0x334455),
+                    transparent: true, opacity: isCrit ? 0.8 : 0.3,
+                });
+                scene.add(new THREE.Mesh(tubeGeo, tubeMat));
+
+                // ELECTRON PARTICLE SYSTEM (GLOWING SPRITES)
+                const pointCount = 60;
+                const particleArr = [];
+                const particleColor = isCrit ? new THREE.Color(colors.critical) : new THREE.Color(isLightMode ? colors.textLight : colors.normal);
+                
+                // Generate texture once
+                const glowTex = createGlowTexture(particleColor);
+                
+                for(let i=0; i<3; i++) { // 3 electrons per edge
+                    const spriteMat = new THREE.SpriteMaterial({
+                        map: glowTex,
+                        color: particleColor,
+                        transparent: true,
+                        blending: THREE.AdditiveBlending, // Makes it glow like light
+                        opacity: 0.9
+                    });
+                    const sprite = new THREE.Sprite(spriteMat);
+                    sprite.scale.set(10, 10, 1);
+                    scene.add(sprite);
+                    
+                    particleSystems.push({
+                        mesh: sprite,
+                        curve: curve,
+                        t: Math.random(), // random start
+                        speed: isCrit ? 0.015 : 0.005
+                    });
+                }
+            }
+        });
+
+        animate();
+    }
+
+    // Helper: Create High-Res Label
+    function createLabel(text, lightMode) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.font = "Bold 40px Inter"; // High res
+        const textWidth = ctx.measureText(text).width;
+        const w = textWidth + 40;
+        const h = 80;
+        canvas.width = w; canvas.height = h;
+        
+        // Background Pill
+        ctx.fillStyle = lightMode ? "rgba(255,255,255,0.85)" : "rgba(10,10,15,0.8)";
+        ctx.strokeStyle = lightMode ? "#ccc" : "#45a29e";
+        ctx.lineWidth = 4;
+        
+        ctx.beginPath();
+        ctx.roundRect(4, 4, w-8, h-8, 20);
+        ctx.fill();
+        ctx.stroke();
+
+        // Text
+        ctx.fillStyle = lightMode ? "#000" : "#fff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, w/2, h/2);
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.minFilter = THREE.LinearFilter;
+        
+        const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+        const sprite = new THREE.Sprite(spriteMat);
+        sprite.scale.set(w/5, h/5, 1); // Scale down in 3D
+        return sprite;
+    }
+
+    // Helper: Create "Electron" Glow Texture
+    function createGlowTexture(color) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64; canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        
+        // Radial Gradient for soft glow
+        const grad = ctx.createRadialGradient(32,32,2, 32,32,32);
+        grad.addColorStop(0, '#ffffff'); // Core is white hot
+        grad.addColorStop(0.2, `rgba(${color.r*255},${color.g*255},${color.b*255},1)`);
+        grad.addColorStop(0.5, `rgba(${color.r*255},${color.g*255},${color.b*255},0.4)`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        
+        ctx.fillStyle = grad;
+        ctx.fillRect(0,0,64,64);
+        
+        return new THREE.CanvasTexture(canvas);
+    }
+
+    function animate() {
+        animationId = requestAnimationFrame(animate);
+        controls.update();
+
+        // Update Electron Positions
+        particleSystems.forEach(p => {
+            p.t += p.speed;
+            if(p.t > 1) p.t = 0;
+            const pos = p.curve.getPoint(p.t);
+            p.mesh.position.copy(pos);
+        });
+
+        renderer.render(scene, camera);
+    }
+    
+    window.addEventListener('resize', () => { 
+        if(camera) {
+            camera.aspect = window.innerWidth/window.innerHeight; 
+            camera.updateProjectionMatrix(); 
+            renderer.setSize(window.innerWidth, window.innerHeight); 
+        } 
+    });
+</script>
+</body>
+</html>

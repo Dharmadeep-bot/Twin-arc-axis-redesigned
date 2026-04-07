@@ -1,0 +1,24 @@
+/* ═══ Scientific Studies — Minimal CSS ═══
+   Only styles that CANNOT be expressed in Tailwind:
+   – CausalGraphViewer child-element overrides (mini mode)
+   – Scrollbar hiding
+*/
+
+/* ── Scrollbar Hiding ── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── CausalGraphViewer mini-mode: hide internal panels ── */
+.mini-graph-container .toolbar,
+.mini-graph-container .top-right-group,
+.mini-graph-container .physics-panel,
+.mini-graph-container .inspector,
+.mini-graph-container .toast {
+    display: none !important;
+}
+.mini-graph-container:hover .toolbar {
+    display: flex !important;
+    transform: scale(0.8);
+    top: 5px;
+    left: 5px;
+}

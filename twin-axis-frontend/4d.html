@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CAUSAL NEXUS // OMNI</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://unpkg.com/three@0.146.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/3d-force-graph@1.71.4/dist/3d-force-graph.min.js"></script>
+    <script src="https://unpkg.com/three-spritetext@1.8.0/dist/three-spritetext.min.js"></script>
+    <script src="https://unpkg.com/papaparse@5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+
+    <style>
+        /* --- OMNI THEME VARIABLES --- */
+        :root {
+            --bg-deep: #030304;
+            --glass-surface: rgba(20, 20, 25, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --primary: #3b82f6;     /* Modern Blue */
+            --accent: #06b6d4;      /* Cyan */
+            --danger: #ef4444;
+            --success: #10b981;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --radius: 12px;
+            --blur: 20px;
+        }
+
+        /* --- GLOBAL LAYOUT --- */
+        body { margin: 0; overflow: hidden; background: var(--bg-deep); font-family: 'Inter', sans-serif; color: var(--text-main); }
+        #canvas-container { position: absolute; inset: 0; z-index: 0; }
+        
+        /* --- GLASS UI CONTAINER --- */
+        .glass-panel {
+            background: var(--glass-surface);
+            backdrop-filter: blur(var(--blur));
+            -webkit-backdrop-filter: blur(var(--blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        /* --- SIDEBAR --- */
+        #sidebar {
+            position: absolute; top: 20px; left: 20px; bottom: 20px;
+            width: 340px;
+            display: flex; flex-direction: column; gap: 20px;
+            z-index: 10;
+            overflow-y: auto;
+            scrollbar-width: none; /* Hide scrollbar Firefox */
+        }
+        #sidebar::-webkit-scrollbar { display: none; } /* Hide Chrome */
+
+        /* --- HEADER --- */
+        .brand {
+            display: flex; align-items: center; gap: 10px;
+            font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 16px; letter-spacing: -0.5px;
+            padding-bottom: 15px; border-bottom: 1px solid var(--glass-border);
+        }
+        .brand i { color: var(--accent); }
+
+        /* --- UPLOAD WIDGET --- */
+        .upload-widget {
+            border: 2px dashed var(--glass-border);
+            border-radius: var(--radius);
+            padding: 30px 20px;
+            text-align: center; cursor: pointer;
+            transition: 0.2s; background: rgba(255,255,255,0.01);
+        }
+        .upload-widget:hover { border-color: var(--accent); background: rgba(6, 182, 212, 0.05); }
+        .upload-widget i { font-size: 24px; color: var(--text-muted); margin-bottom: 8px; }
+        .upload-widget div { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+
+        /* --- CONTROLS SECTIONS --- */
+        .section-title {
+            font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 10px; display: flex; justify-content: space-between;
+        }
+        
+        /* SLIDERS */
+        .control-row { margin-bottom: 12px; }
+        .control-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
+        input[type="range"] {
+            width: 100%; -webkit-appearance: none; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 14px; height: 14px; background: var(--primary); border-radius: 50%; cursor: pointer; box-shadow: 0 0 10px var(--primary);
+        }
+
+        /* TOGGLES */
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .toggle-btn {
+            background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border);
+            color: var(--text-muted); padding: 8px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; text-align: center;
+        }
+        .toggle-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* --- SYSTEM LOG --- */
+        #sys-log {
+            position: absolute; bottom: 20px; right: 20px;
+            max-width: 300px; max-height: 150px;
+            overflow-y: auto; pointer-events: none;
+            display: flex; flex-direction: column; justify-content: flex-end; gap: 5px;
+            z-index: 5;
+        }
+        .log-entry {
+            font-family: 'JetBrains Mono', monospace; font-size: 10px;
+            background: rgba(0,0,0,0.6); color: var(--text-muted); padding: 4px 8px; border-radius: 4px;
+            border-left: 2px solid var(--text-muted);
+            animation: fadeIn 0.3s ease;
+        }
+        .log-entry.error { border-color: var(--danger); color: #fca5a5; }
+        .log-entry.success { border-color: var(--success); color: #86efac; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } }
+
+        /* --- MODAL (EDITOR) --- */
+        #editor-modal {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9);
+            width: 320px; z-index: 100;
+            opacity: 0; pointer-events: none;
+            transition: 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        #editor-modal.open { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+        
+        .input-group { margin-bottom: 12px; }
+        .input-group label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+        input[type="text"], input[type="number"] {
+            width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: white;
+            padding: 8px; border-radius: 6px; font-family: 'Inter'; box-sizing: border-box;
+        }
+        input:focus { outline: none; border-color: var(--primary); }
+        
+        .modal-actions { display: flex; gap: 8px; margin-top: 15px; }
+        button.btn {
+            flex: 1; padding: 10px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; font-size: 12px;
+            background: rgba(255,255,255,0.05); color: white; transition: 0.2s;
+        }
+        button.btn-primary { background: var(--primary); }
+        button.btn-primary:hover { background: #2563eb; }
+        button.btn-danger { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+        button.btn-danger:hover { background: var(--danger); color: white; }
+
+        /* LOADING */
+        #loader {
+            position: fixed; inset: 0; background: #030304; z-index: 999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .spinner {
+            width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--primary);
+            border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div id="loader">
+        <div class="spinner"></div>
+        <div style="font-size: 12px; letter-spacing: 2px; color: #666;">INITIALIZING OMNI CORE</div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div id="sys-log"></div>
+
+    <div id="sidebar" class="glass-panel">
+        <div class="brand">
+            <i class="fas fa-project-diagram"></i>
+            <span>CAUSAL OMNI</span>
+        </div>
+
+        <div class="upload-widget" id="drop-zone">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <div>Drop B-Matrix (Excel/CSV)</div>
+            <div style="font-size:10px; opacity:0.6; margin-top:4px;">or Click to Browse</div>
+        </div>
+        <input type="file" id="file-input" style="display:none" accept=".xlsx,.xls,.csv">
+        
+        <button class="btn" style="width:100%" onclick="loadDemo()"><i class="fas fa-vial"></i> Load Demo Data</button>
+
+        <div style="margin-top: 10px;">
+            <div class="section-title">VISUAL PHYSICS</div>
+            
+            <div class="control-row">
+                <div class="control-label"><span>Gravity (Repulsion)</span> <span id="val-charge">-400</span></div>
+                <input type="range" min="-1000" max="-50" value="-400" oninput="updatePhysics('charge', this.value)">
+            </div>
+            
+            <div class="control-row">
+                <div class="control-label"><span>Collision Radius</span> <span id="val-collide">10</span></div>
+                <input type="range" min="0" max="30" value="10" oninput="updatePhysics('collide', this.value)">
+            </div>
+
+            <div class="control-row">
+                <div class="control-label"><span>Flow Speed</span> <span id="val-speed">1.0</span></div>
+                <input type="range" min="0" max="5" step="0.1" value="1.0" oninput="updatePhysics('speed', this.value)">
+            </div>
+        </div>
+
+        <div class="section-title">DISPLAY FILTERS</div>
+        <div class="toggle-grid">
+            <div class="toggle-btn active" id="btn-labels" onclick="toggle('labels')">Labels</div>
+            <div class="toggle-btn active" id="btn-weights" onclick="toggle('weights')">Weights</div>
+            <div class="toggle-btn active" id="btn-flow" onclick="toggle('flow')">Particles</div>
+            <div class="toggle-btn active" id="btn-curve" onclick="toggle('curve')">Curved</div>
+        </div>
+        
+        <div class="control-row" style="margin-top:15px;">
+            <div class="control-label"><span>Min Weight Filter</span> <span id="val-thresh">0.00</span></div>
+            <input type="range" min="0" max="1" step="0.05" value="0" oninput="updateFilter(this.value)">
+        </div>
+
+        <button class="btn btn-danger" onclick="clearData()" style="margin-top:auto;"><i class="fas fa-trash-alt"></i> Clear All Data</button>
+    </div>
+
+    <div id="editor-modal" class="glass-panel">
+        <div class="brand" style="border:none; padding-bottom:10px; font-size:14px;">
+            <i class="fas fa-pen-nib"></i> <span id="modal-title">EDIT OBJECT</span>
+        </div>
+        <div id="modal-content">
+            </div>
+        <div class="modal-actions">
+            <button class="btn btn-primary" onclick="saveEditor()">Save Changes</button>
+            <button class="btn" onclick="closeEditor()">Cancel</button>
+        </div>
+        <div style="margin-top:10px;">
+             <button class="btn btn-danger" style="width:100%" onclick="deleteObject()">Delete Object</button>
+        </div>
+    </div>
+
+<script>
+    // ==========================================
+    // 1. SYSTEM CORE & LOGGING
+    // ==========================================
+    function log(msg, type='info') {
+        const el = document.getElementById('sys-log');
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${type}`;
+        const time = new Date().toLocaleTimeString().split(' ')[0];
+        entry.innerHTML = `[${time}] ${msg}`;
+        el.appendChild(entry);
+        el.scrollTop = el.scrollHeight;
+        console.log(`[OMNI] ${msg}`);
+    }
+
+    window.onerror = function(msg, url, line) {
+        log(`CRITICAL: ${msg}`, 'error');
+        return false;
+    };
+
+    // ==========================================
+    // 2. STATE MANAGEMENT
+    // ==========================================
+    const state = {
+        nodes: [],
+        links: [],
+        config: {
+            charge: -400,
+            collision: 10,
+            linkDist: 70,
+            flowSpeed: 1.0,
+            threshold: 0.0,
+            showLabels: true,
+            showWeights: true,
+            showFlow: true,
+            curved: true
+        },
+        colors: {
+            pos: '#3b82f6',
+            neg: '#ef4444',
+            bg: '#030304'
+        }
+    };
+
+    let Graph = null;
+    let activeObj = null; // For editor
+
+    // ==========================================
+    // 3. GRAPH ENGINE (Three.js + Force)
+    // ==========================================
+    function initGraph() {
+        try {
+            const container = document.getElementById('canvas-container');
+            
+            Graph = ForceGraph3D()
+                (container)
+                .backgroundColor(state.colors.bg)
+                // NODES
+                .nodeRelSize(5)
+                .nodeColor(() => state.colors.pos)
+                .nodeOpacity(0.9)
+                .nodeThreeObject(node => {
+                    const group = new THREE.Group();
+                    
+                    // Sphere with Glow
+                    const geometry = new THREE.SphereGeometry(5, 32, 32);
+                    const material = new THREE.MeshPhongMaterial({
+                        color: state.colors.pos,
+                        emissive: '#1d4ed8',
+                        emissiveIntensity: 0.5,
+                        shininess: 90
+                    });
+                    const mesh = new THREE.Mesh(geometry, material);
+                    group.add(mesh);
+
+                    // Text Sprite (Inter Font)
+                    if(state.config.showLabels) {
+                        const sprite = new SpriteText(node.id);
+                        sprite.color = '#ffffff';
+                        sprite.backgroundColor = 'rgba(15, 23, 42, 0.8)'; // Dark slate bg
+                        sprite.padding = 3;
+                        sprite.borderRadius = 4;
+                        sprite.textHeight = 4;
+                        sprite.position.y = 8;
+                        sprite.fontFace = 'Inter';
+                        sprite.fontWeight = '600';
+                        group.add(sprite);
+                    }
+                    return group;
+                })
+                // LINKS
+                .linkWidth(l => Math.abs(l.value) * 1.5)
+                .linkColor(l => l.value > 0 ? state.colors.pos : state.colors.neg)
+                .linkOpacity(0.3)
+                .linkCurvature(d => state.config.curved ? 0.2 : 0)
+                // PARTICLES
+                .linkDirectionalParticles(l => state.config.showFlow ? 3 : 0)
+                .linkDirectionalParticleSpeed(d => Math.abs(d.value) * 0.005 * state.config.flowSpeed)
+                .linkDirectionalParticleWidth(2.5)
+                // LABELS (WEIGHTS)
+                .linkThreeObjectExtend(true)
+                .linkThreeObject(link => {
+                    if(!state.config.showWeights) return null;
+                    const val = parseFloat(link.value).toFixed(2);
+                    const sprite = new SpriteText(val);
+                    sprite.color = link.value > 0 ? '#60a5fa' : '#f87171'; // Lighter shades
+                    sprite.textHeight = 2.5;
+                    sprite.backgroundColor = 'rgba(0,0,0,0.7)';
+                    sprite.padding = 1.5;
+                    sprite.borderRadius = 2;
+                    sprite.fontFace = 'Inter';
+                    return sprite;
+                })
+                .linkPositionUpdate((sprite, { start, end }) => {
+                    const cx = start.x + (end.x - start.x) / 2;
+                    const cy = start.y + (end.y - start.y) / 2;
+                    const cz = start.z + (end.z - start.z) / 2;
+                    Object.assign(sprite.position, { x: cx, y: cy, z: cz });
+                })
+                // INTERACTION
+                .onNodeClick(node => {
+                    focusNode(node);
+                    openEditor(node, 'node');
+                })
+                .onLinkClick(link => openEditor(link, 'link'))
+                .onBackgroundClick(closeEditor);
+
+            // LIGHTING
+            const scene = Graph.scene();
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+            dirLight.position.set(50, 50, 50);
+            scene.add(dirLight);
+
+            // INITIAL PHYSICS
+            Graph.d3Force('charge').strength(state.config.charge);
+            // Add Collision Force to prevent overlap
+            // We use d3-force-3d's internal mechanism if available or adjust charge
+            // 3d-force-graph doesn't expose d3.forceCollide directly easily in 3D without custom force
+            // So we rely on high charge and link distance.
+            
+            log("Engine initialized successfully.", "success");
+            document.getElementById('loader').style.display = 'none';
+
+        } catch (e) {
+            log(e.message, 'error');
+            alert("Initialization Failed. Check System Log.");
+        }
+    }
+
+    // ==========================================
+    // 4. DATA PARSING (Excel/CSV)
+    // ==========================================
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+
+    dropZone.onclick = () => fileInput.click();
+    fileInput.onchange = e => handleFile(e.target.files[0]);
+    dropZone.ondragover = e => { e.preventDefault(); dropZone.style.borderColor = state.colors.accent; };
+    dropZone.ondragleave = () => { dropZone.style.borderColor = 'rgba(255,255,255,0.08)'; };
+    dropZone.ondrop = e => { e.preventDefault(); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); };
+
+    function handleFile(file) {
+        log(`Reading file: ${file.name}...`);
+        
+        if (file.name.endsWith('.csv')) {
+            Papa.parse(file, {
+                complete: (res) => processMatrix(res.data)
+            });
+        } else {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const wb = XLSX.read(data, { type: 'array' });
+                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    const matrix = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                    processMatrix(matrix);
+                } catch(err) {
+                    log("Excel Parsing Error: " + err.message, "error");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    }
+
+    function processMatrix(matrix) {
+        // Robust B-Matrix Parser
+        const clean = matrix.filter(r => r && r.length > 0);
+        if (clean.length < 2) { log("Matrix empty or invalid", "error"); return; }
+
+        const nodes = new Set();
+        const links = [];
+        const header = clean[0];
+        
+        // Detection: Row labels?
+        const hasRowLabels = clean[1].length > header.length || isNaN(parseFloat(clean[1][0]));
+
+        for(let i=1; i<clean.length; i++) {
+            const row = clean[i];
+            let src = hasRowLabels ? row[0] : (header[i-1] || `Node_${i}`);
+            src = String(src).trim();
+            if(!src) continue;
+            nodes.add(src);
+
+            let startCol = hasRowLabels ? 1 : 0;
+            for(let j=startCol; j<row.length; j++) {
+                let tgt = hasRowLabels ? header[j-1] : header[j];
+                if(!tgt) tgt = `Target_${j}`;
+                tgt = String(tgt).trim();
+                
+                if(src === tgt) continue; // Skip self loops for now if preferred
+
+                const val = parseFloat(row[j]);
+                if(!isNaN(val) && val !== 0) {
+                    nodes.add(tgt);
+                    links.push({ source: src, target: tgt, value: val });
+                }
+            }
+        }
+
+        state.nodes = Array.from(nodes).map(id => ({ id }));
+        state.links = links;
+        
+        refresh();
+        log(`Loaded ${state.nodes.length} nodes, ${links.length} links`, "success");
+    }
+
+    // ==========================================
+    // 5. UPDATE & REFRESH LOGIC
+    // ==========================================
+    function refresh() {
+        if(!Graph) return;
+
+        // Apply Threshold
+        const filteredLinks = state.links.filter(l => Math.abs(l.value) >= state.config.threshold);
+        
+        // Find connected nodes (optional: hide orphans)
+        const activeIds = new Set();
+        filteredLinks.forEach(l => {
+            activeIds.add(typeof l.source === 'object' ? l.source.id : l.source);
+            activeIds.add(typeof l.target === 'object' ? l.target.id : l.target);
+        });
+
+        const filteredNodes = state.nodes; // Keep all nodes or filter? Let's keep all for editing stability
+
+        Graph.graphData({
+            nodes: filteredNodes,
+            links: filteredLinks
+        });
+    }
+
+    // ==========================================
+    // 6. CONTROL HANDLERS
+    // ==========================================
+    function updatePhysics(type, val) {
+        val = parseFloat(val);
+        document.getElementById(`val-${type === 'charge' ? 'charge' : type === 'collide' ? 'collide' : 'speed'}`).innerText = val;
+        
+        if(type === 'charge') {
+            state.config.charge = val;
+            Graph.d3Force('charge').strength(val);
+        } else if (type === 'speed') {
+            state.config.flowSpeed = val;
+            // Particles need full re-render trigger usually or accessor update
+            Graph.linkDirectionalParticleSpeed(d => Math.abs(d.value) * 0.005 * val);
+        } else if (type === 'collide') {
+            // Pseudo collision by increasing repulsion locally?
+            // Actually, we can use link distance as a proxy for spacing
+            // Or just reheat simulation
+        }
+        Graph.d3ReheatSimulation();
+    }
+
+    function toggle(feature) {
+        const btn = document.getElementById(`btn-${feature}`);
+        btn.classList.toggle('active');
+        
+        if(feature === 'labels') state.config.showLabels = !state.config.showLabels;
+        if(feature === 'weights') state.config.showWeights = !state.config.showWeights;
+        if(feature === 'flow') state.config.showFlow = !state.config.showFlow;
+        if(feature === 'curve') state.config.curved = !state.config.curved;
+
+        // Re-inject data to trigger nodeThreeObject / linkThreeObject rebuild
+        refresh();
+    }
+
+    function updateFilter(val) {
+        state.config.threshold = val;
+        document.getElementById('val-thresh').innerText = parseFloat(val).toFixed(2);
+        refresh();
+    }
+
+    // ==========================================
+    // 7. EDITOR LOGIC
+    // ==========================================
+    function openEditor(obj, type) {
+        activeObj = obj;
+        const modal = document.getElementById('editor-modal');
+        const title = document.getElementById('modal-title');
+        const content = document.getElementById('modal-content');
+        
+        modal.classList.add('open');
+
+        if(type === 'node') {
+            title.innerText = "EDIT NODE";
+            content.innerHTML = `
+                <div class="input-group">
+                    <label>Node ID / Label</label>
+                    <input type="text" id="edit-id" value="${obj.id}">
+                </div>
+            `;
+        } else {
+            title.innerText = "EDIT CONNECTION";
+            content.innerHTML = `
+                <div class="input-group">
+                    <label>Weight (Correlation)</label>
+                    <input type="number" id="edit-val" step="0.01" value="${obj.value}">
+                </div>
+                <div style="font-size:10px; color:#666;">
+                    ${obj.source.id} ➔ ${obj.target.id}
+                </div>
+            `;
+        }
+    }
+
+    function saveEditor() {
+        if(!activeObj) return;
+        
+        if(activeObj.id) { // Node
+            const newId = document.getElementById('edit-id').value;
+            if(newId && newId !== activeObj.id) {
+                // Find in raw state
+                const n = state.nodes.find(node => node.id === activeObj.id);
+                if(n) n.id = newId;
+                log(`Renamed node to ${newId}`, 'success');
+            }
+        } else { // Link
+            const newVal = parseFloat(document.getElementById('edit-val').value);
+            if(!isNaN(newVal)) {
+                activeObj.value = newVal;
+                log(`Updated link strength to ${newVal}`, 'success');
+            }
+        }
+        refresh();
+        closeEditor();
+    }
+
+    function deleteObject() {
+        if(!activeObj) return;
+        
+        if(activeObj.id) { // Node
+            state.nodes = state.nodes.filter(n => n.id !== activeObj.id);
+            // Remove associated links
+            state.links = state.links.filter(l => l.source.id !== activeObj.id && l.target.id !== activeObj.id);
+            log(`Deleted node ${activeObj.id}`, 'info');
+        } else { // Link
+            state.links = state.links.filter(l => l !== activeObj);
+            log("Deleted link", 'info');
+        }
+        refresh();
+        closeEditor();
+    }
+
+    function closeEditor() {
+        document.getElementById('editor-modal').classList.remove('open');
+        activeObj = null;
+    }
+
+    function focusNode(node) {
+        const dist = 60;
+        const ratio = 1 + dist / Math.hypot(node.x, node.y, node.z);
+        Graph.cameraPosition(
+            { x: node.x * ratio, y: node.y * ratio, z: node.z * ratio },
+            node, 1500
+        );
+    }
+
+    function clearData() {
+        state.nodes = [];
+        state.links = [];
+        refresh();
+        log("Workspace Cleared", "info");
+    }
+
+    function loadDemo() {
+        const nodes = ['Campaign', 'Clicks', 'Leads', 'Sales', 'Revenue', 'Cost', 'ROI', 'Churn'];
+        const links = [];
+        
+        nodes.forEach((s, i) => {
+            nodes.forEach((t, j) => {
+                if(i !== j && Math.random() > 0.7) {
+                    links.push({ source: s, target: t, value: (Math.random()*2 - 1) });
+                }
+            });
+        });
+        
+        state.nodes = nodes.map(id => ({ id }));
+        state.links = links;
+        refresh();
+        log("Demo Data Loaded", "success");
+    }
+
+    // Start Engine
+    initGraph();
+
+</script>
+</body>
+</html>
