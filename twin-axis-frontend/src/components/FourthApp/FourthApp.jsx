@@ -62,6 +62,113 @@ const DATASET_TYPES = [
 
 const WINDOWS = ['early', 'mid', 'late'];
 
+const CLUSTER_DATA = {
+  "late_non_failure": [
+    {"gasifier": "g1r27", "cluster": 0},
+    {"gasifier": "G3R24", "cluster": 0},
+    {"gasifier": "g3r30", "cluster": 0},
+    {"gasifier": "g4r24", "cluster": 0},
+    {"gasifier": "G7R23", "cluster": 0},
+    {"gasifier": "g8r17", "cluster": 0},
+    {"gasifier": "g5r20", "cluster": 0},
+
+    {"gasifier": "g3r33", "cluster": 1},
+    {"gasifier": "g3r32", "cluster": 1},
+    {"gasifier": "g10r24", "cluster": 1},
+    {"gasifier": "g1r34", "cluster": 1},
+    {"gasifier": "g7r17", "cluster": 1},
+    {"gasifier": "g4r25", "cluster": 1},
+    {"gasifier": "g8r18", "cluster": 1},
+    {"gasifier": "G9R25", "cluster": 1}
+  ],
+  "mid_non_failure": [
+    {"gasifier": "g1r34", "cluster": 0},
+    {"gasifier": "g3r30", "cluster": 0},
+    {"gasifier": "g3r32", "cluster": 0},
+    {"gasifier": "g4r24", "cluster": 0},
+    {"gasifier": "G7R23", "cluster": 0},
+    {"gasifier": "g7r17", "cluster": 0},
+    {"gasifier": "g4r25", "cluster": 0},
+
+    {"gasifier": "g10r16", "cluster": 1},
+    {"gasifier": "g3r33", "cluster": 1},
+    {"gasifier": "G3R24", "cluster": 1},
+    {"gasifier": "g10r24", "cluster": 1},
+    {"gasifier": "g1r27", "cluster": 1},
+    {"gasifier": "g5r20", "cluster": 1},
+    {"gasifier": "g8r17", "cluster": 1},
+    {"gasifier": "g8r18", "cluster": 1},
+    {"gasifier": "G9R25", "cluster": 1}
+  ],
+  "early_non_failure": [
+    {"gasifier": "g3r30", "cluster": 0},
+    {"gasifier": "g5r20", "cluster": 0},
+    {"gasifier": "g4r25", "cluster": 0},
+    {"gasifier": "g4r24", "cluster": 0},
+    {"gasifier": "g7r17", "cluster": 0},
+
+    {"gasifier": "g10r16", "cluster": 1},
+    {"gasifier": "g1r27", "cluster": 1},
+    {"gasifier": "g10r24", "cluster": 1},
+    {"gasifier": "g3r33", "cluster": 1},
+    {"gasifier": "g3r32", "cluster": 1},
+    {"gasifier": "G3R24", "cluster": 1},
+    {"gasifier": "g1r34", "cluster": 1},
+    {"gasifier": "G7R23", "cluster": 1},
+    {"gasifier": "g8r17", "cluster": 1},
+    {"gasifier": "g8r18", "cluster": 1},
+    {"gasifier": "G9R25", "cluster": 1}
+  ],
+  "late_failure": [
+    {"gasifier": "g10r23", "cluster": 0},
+    {"gasifier": "g10r26", "cluster": 0},
+    {"gasifier": "g3r25", "cluster": 0},
+    {"gasifier": "g4r21", "cluster": 0},
+    {"gasifier": "g5r19", "cluster": 0},
+    {"gasifier": "g4r26", "cluster": 0},
+    {"gasifier": "g5r21", "cluster": 0},
+    {"gasifier": "g6r17", "cluster": 0},
+    {"gasifier": "g9r26", "cluster": 0},
+    {"gasifier": "g6r19", "cluster": 0},
+    {"gasifier": "g8r16", "cluster": 0},
+    {"gasifier": "g9r24", "cluster": 0},
+
+    {"gasifier": "g1r20", "cluster": 1}
+  ],
+  "mid_failure": [
+    {"gasifier": "g10r23", "cluster": 0},
+    {"gasifier": "g10r26", "cluster": 0},
+    {"gasifier": "g3r25", "cluster": 0},
+    {"gasifier": "g5r21", "cluster": 0},
+    {"gasifier": "g9r24", "cluster": 0},
+    {"gasifier": "g6r19", "cluster": 0},
+
+    {"gasifier": "g1r20", "cluster": 1},
+    {"gasifier": "g4r21", "cluster": 1},
+    {"gasifier": "g5r19", "cluster": 1},
+    {"gasifier": "g4r26", "cluster": 1},
+    {"gasifier": "g6r17", "cluster": 1},
+    {"gasifier": "g8r16", "cluster": 1},
+    {"gasifier": "g9r26", "cluster": 1}
+  ],
+  "early_failure": [
+    {"gasifier": "g10r23", "cluster": 0},
+    {"gasifier": "g1r20", "cluster": 0},
+    {"gasifier": "g5r21", "cluster": 0},
+    {"gasifier": "g6r19", "cluster": 0},
+    {"gasifier": "g9r26", "cluster": 0},
+    {"gasifier": "g9r24", "cluster": 0},
+    {"gasifier": "g8r16", "cluster": 0},
+
+    {"gasifier": "g10r26", "cluster": 1},
+    {"gasifier": "g5r19", "cluster": 1},
+    {"gasifier": "g4r26", "cluster": 1},
+    {"gasifier": "g4r21", "cluster": 1},
+    {"gasifier": "g3r25", "cluster": 1},
+    {"gasifier": "g6r17", "cluster": 1}
+  ]
+};
+
 const NODE_MAPPING = {
   "1": "SlurryPDI",
   "2": "OxygenPDI",
@@ -76,6 +183,13 @@ const NODE_MAPPING_ARRAY = Object.entries(NODE_MAPPING).map(([id, name]) => ({ i
 
 const getNodeName = (id) => {
     return NODE_MAPPING[id] || id;
+};
+
+const formatNodeName = (id) => {
+    let name = getNodeName(id).replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
+    if (name.toLowerCase() === 'central 0') return 'Cluster 0';
+    if (name.toLowerCase() === 'central 1') return 'Cluster 1';
+    return name;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -110,19 +224,45 @@ function getFilesEndpoint(analysisType, datasetType, version) {
 
 // ─── Centrality Window Card ────────────────────────────────────────────────────
 
-const CentralityWindowCard = ({ window: win, windowData, selectedFile, isDarkMode, filterIncoming, selectedCentrality }) => {
+const CentralityWindowCard = ({ window: win, windowData, selectedFile, isDarkMode, filterIncoming, selectedCentrality, datasetType }) => {
     const available = windowData?.available;
     const dk = isDarkMode;
+
+    let tooltipText = null;
+    if (selectedCentrality && datasetType) {
+        let cluster = null;
+        if (selectedCentrality.toLowerCase() === 'central_0') cluster = 0;
+        else if (selectedCentrality.toLowerCase() === 'central_1') cluster = 1;
+
+        if (cluster !== null) {
+            const key = `${win}_${datasetType}`;
+            const data = CLUSTER_DATA[key];
+            if (data) {
+                const gasifiers = data.filter(d => d.cluster === cluster).map(d => d.gasifier).join(', ');
+                if (gasifiers) {
+                    tooltipText = gasifiers;
+                }
+            }
+        }
+    }
 
     if (!available) {
         return (
             <div className={`flex flex-col h-full min-h-[500px] ${dk ? 'bg-slate-800/35 border border-slate-700' : 'bg-slate-50 border border-slate-200'}`}>
-                <div className={`px-3 py-1.5 border-b ${dk ? 'border-slate-700' : 'border-slate-200'}`}>
-                    <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                        win === 'early' ? 'text-green-500' :
-                        win === 'mid' ? 'text-yellow-500' :
-                        'text-red-500'
-                    }`}>{win.toUpperCase()}</span>
+                <div className={`px-3 py-1.5 border-b flex items-center ${dk ? 'border-slate-700' : 'border-slate-200'}`}>
+                    <div className={`relative flex items-center ${tooltipText ? 'group cursor-help' : ''}`}>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                            win === 'early' ? 'text-green-500' :
+                            win === 'mid' ? 'text-yellow-500' :
+                            'text-red-500'
+                        }`}>{win.toUpperCase()}</span>
+                        {tooltipText && (
+                            <div className={`absolute ${win === 'late' ? 'right-full mr-2' : 'left-full ml-2'} top-1/2 -translate-y-1/2 hidden group-hover:block z-[99] p-2 text-[11px] rounded shadow-xl w-48 whitespace-normal leading-relaxed ${dk ? 'bg-slate-700 text-slate-200 border-slate-600' : 'bg-slate-800 text-slate-100 border-slate-700'} border`}>
+                                <div className="font-semibold mb-1 border-b border-slate-600 pb-1">Cluster {selectedCentrality.endsWith('0') ? '0' : '1'} Gasifiers</div>
+                                {tooltipText}
+                            </div>
+                        )}
+                    </div>
                 </div>
                 <div className={`flex flex-col items-center justify-center gap-2 flex-1 ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
                     <div className="text-3xl opacity-45">🚫</div>
@@ -180,12 +320,20 @@ const CentralityWindowCard = ({ window: win, windowData, selectedFile, isDarkMod
 
     return (
         <div className={`flex flex-col h-full min-h-[500px] border ${dk ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-            <div className={`px-3 py-1.5 border-b ${dk ? 'border-slate-700' : 'border-slate-200'}`}>
-                <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                    win === 'early' ? 'text-green-500' :
-                    win === 'mid' ? 'text-yellow-500' :
-                    'text-red-500'
-                }`}>{win.toUpperCase()}</span>
+            <div className={`px-3 py-1.5 border-b flex items-center ${dk ? 'border-slate-700' : 'border-slate-200'}`}>
+                <div className={`relative flex items-center ${tooltipText ? 'group cursor-help' : ''}`}>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                        win === 'early' ? 'text-green-500' :
+                        win === 'mid' ? 'text-yellow-500' :
+                        'text-red-500'
+                    }`}>{win.toUpperCase()}</span>
+                    {tooltipText && (
+                        <div className={`absolute ${win === 'late' ? 'right-full mr-2' : 'left-full ml-2'} top-1/2 -translate-y-1/2 hidden group-hover:block z-[99] p-2 text-[11px] rounded shadow-xl w-48 whitespace-normal leading-relaxed ${dk ? 'bg-slate-700 text-slate-200 border-slate-600' : 'bg-slate-800 text-slate-100 border-slate-700'} border`}>
+                            <div className="font-semibold mb-1 border-b border-slate-600 pb-1">Cluster {selectedCentrality.endsWith('0') ? '0' : '1'} Gasifiers</div>
+                            {tooltipText}
+                        </div>
+                    )}
+                </div>
             </div>
             {bMatrixData ? (
                 <div className="flex-1">
@@ -303,7 +451,7 @@ const CentralityRow = ({ datasetType, analysisType, version, isDarkMode }) => {
                             <option value="">— Select —</option>
                             {centralities.map(c => (
                                 <option key={c} value={c}>
-                                    {getNodeName(c).replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase())}
+                                    {formatNodeName(c)}
                                 </option>
                             ))}
                         </select>
@@ -363,6 +511,7 @@ const CentralityRow = ({ datasetType, analysisType, version, isDarkMode }) => {
                                 isDarkMode={isDarkMode}
                                 filterIncoming={filterIncoming}
                                 selectedCentrality={selectedCentrality}
+                                datasetType={datasetType}
                             />
                         ))}
                     </div>
@@ -676,7 +825,7 @@ const FourthApp = ({ isDarkMode }) => {
                                     <option value="">— Select —</option>
                                     {currentSvCentralNodes.map(node => (
                                         <option key={node} value={node}>
-                                            {getNodeName(node).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                            {formatNodeName(node)}
                                         </option>
                                     ))}
                                 </select>
