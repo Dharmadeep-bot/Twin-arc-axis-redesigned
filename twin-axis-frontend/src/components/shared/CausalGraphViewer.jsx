@@ -53,6 +53,7 @@ const CausalGraphViewer = ({
 
     // RESTORED FEATURES: Physics & Layout
     const [springLen, setSpringLen] = useState(250);
+    const [edgeThreshold, setEdgeThreshold] = useState(0.15);
     const [physicsEnabled, setPhysicsEnabled] = useState(true);
     const [isFrozen, setIsFrozen] = useState(true);
     // Keep refs in sync so event listeners always have the latest value
@@ -207,7 +208,7 @@ const CausalGraphViewer = ({
                 if (row[source] !== undefined) {
                     const weight = parseFloat(row[source]);
                     // Basic threshold for 2D view (can be stricter than 4D)
-                    if (Math.abs(weight) >= 0.1 && String(target) !== String(source)) {
+                    if (Math.abs(weight) >= edgeThreshold && String(target) !== String(source)) {
                         newEdges.push({
                             from: source,
                             to: target,
@@ -235,7 +236,7 @@ const CausalGraphViewer = ({
                 networkRef.current.redraw();
             }, 100);
         }
-    }, [bMatrixData, nodes, edges, colors, nodeMetadata, hiddenNodesSet]);
+    }, [bMatrixData, nodes, edges, colors, nodeMetadata, hiddenNodesSet, edgeThreshold]);
 
     // =========================================================================
     // 1. VIS NETWORK (2D EDITOR)
@@ -891,6 +892,19 @@ const CausalGraphViewer = ({
             <div id="network-3d" ref={container3D} style={{ display: viewMode === '3d' ? 'block' : 'none', height: '100%' }}></div>
             <div id="network-4d" ref={container4D} style={{ display: viewMode === '4d' ? 'block' : 'none', height: '100%' }}></div>
 
+            {/* QUICK THRESHOLD CONTROLLER (FLOATING BOTTOM RIGHT) */}
+            <div className={`absolute right-3 bottom-3 z-10 flex flex-col gap-1 p-2 rounded shadow-md border backdrop-blur-sm transition-colors ${isDarkMode ? 'bg-slate-800/80 border-slate-700 text-slate-200' : 'bg-white/80 border-slate-200 text-slate-700'}`}>
+                <label className="text-[10px] font-bold uppercase tracking-wider opacity-80">Threshold</label>
+                <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={edgeThreshold}
+                    onChange={(e) => setEdgeThreshold(parseFloat(e.target.value) || 0)}
+                    className={`px-2 py-1 text-xs font-semibold outline-none rounded border transition-colors ${isDarkMode ? 'bg-slate-900 border-slate-600 focus:border-sky-500' : 'bg-white border-slate-300 focus:border-blue-500'} w-20`}
+                />
+            </div>
+
             {/* VIEW SWITCHER — collapsible dropdown */}
             <div className="top-right-group">
                 <div className="ui-panel view-pill">
@@ -964,15 +978,28 @@ const CausalGraphViewer = ({
                                 <ChevronDown size={11} className={`toolbar-adv-chevron ${advancedOpen ? 'open' : ''}`} />
                             </button>
                             {advancedOpen && (
-                                <div className="toolbar-spring-row">
-                                    <span className="toolbar-spring-label">Spring</span>
-                                    <input
-                                        type="range" min="50" max="600" value={springLen}
-                                        className="toolbar-spring-slider"
-                                        onChange={(e) => setSpringLen(parseInt(e.target.value))}
-                                    />
-                                    <span className="toolbar-spring-val">{springLen}</span>
-                                </div>
+                                <>
+                                    <div className="toolbar-spring-row" style={{ marginBottom: '8px' }}>
+                                        <span className="toolbar-spring-label" style={{ fontSize: '11px', color: isDarkMode ? '#a1a1aa' : '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Threshold</span>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={edgeThreshold}
+                                            onChange={(e) => setEdgeThreshold(parseFloat(e.target.value) || 0)}
+                                            style={{ width: '50px', marginLeft: 'auto', padding: '1px 3px', fontSize: '11px', background: isDarkMode ? '#0f172a' : '#f8fafc', color: isDarkMode ? '#e2e8f0' : '#334155', border: '1px solid', borderColor: isDarkMode ? '#334155' : '#cbd5e1', borderRadius: '3px', outline: 'none' }}
+                                        />
+                                    </div>
+                                    <div className="toolbar-spring-row">
+                                        <span className="toolbar-spring-label">Spring</span>
+                                        <input
+                                            type="range" min="50" max="600" value={springLen}
+                                            className="toolbar-spring-slider"
+                                            onChange={(e) => setSpringLen(parseInt(e.target.value))}
+                                        />
+                                        <span className="toolbar-spring-val">{springLen}</span>
+                                    </div>
+                                </>
                             )}
                         </div>
                     )}
