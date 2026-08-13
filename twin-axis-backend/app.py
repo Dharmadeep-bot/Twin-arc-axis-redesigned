@@ -28,6 +28,10 @@ app.register_blueprint(fourthapp_bp)
 from causal_routes import causal_bp
 app.register_blueprint(causal_bp)
 
+# --- Wind B-Matrix Study ---
+from wind_routes import wind_bp
+app.register_blueprint(wind_bp)
+
 import configparser
 
 # Configuration

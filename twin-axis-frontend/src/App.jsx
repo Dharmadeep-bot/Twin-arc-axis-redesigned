@@ -80,6 +80,7 @@ function Home({ isDarkMode }) {
         <Card to="/scientific-studies" title="Scientific Studies" icon="🔬" hoverColor="#818cf8" />
         <Card to="/causal-analysis" title="Causal Engine" icon="⚡" hoverColor="#3b82f6" />
         <Card to="/scatter-plot" title="Scatter Plot Lab" icon="📈" hoverColor="#fbbf24" />
+        <Card to="/wind-study" title="Wind Study" icon="💨" hoverColor="#38bdf8" />
       </div>
     </div>
   );
@@ -118,6 +119,8 @@ function Navigation({ isDarkMode, setIsDarkMode }) {
         navigate('/causal-analysis');
       } else if (count === 3) {
         navigate('/scatter-plot');
+      } else if (count === 4) {
+        navigate('/wind-study');
       }
     }, 300); 
   };
@@ -232,7 +235,7 @@ function AppContent({ isDarkMode, setIsDarkMode }) {
 
   return (
     <>
-      <div style={{ display: (currentPath === '/' || currentPath === '/scientific-studies') ? 'block' : 'none', height: '100%' }}>
+      <div style={{ display: (currentPath === '/' || currentPath === '/scientific-studies' || currentPath === '/wind-study') ? 'block' : 'none', height: '100%' }}>
         <ScientificStudies isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
       </div>
       <div style={{ display: currentPath === '/scatter-plot' ? 'block' : 'none', height: '100%' }}>

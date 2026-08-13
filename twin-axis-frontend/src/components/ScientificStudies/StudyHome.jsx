@@ -1,7 +1,10 @@
 import React from 'react';
-import { BarChart3, GitCompare, Layers, Network, Workflow, ArrowRight, GanttChart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { BarChart3, GitCompare, Layers, Network, Workflow, ArrowRight, GanttChart, Wind } from 'lucide-react';
 
 const StudyHome = ({ onSelectStudy, isDarkMode }) => {
+    const navigate = useNavigate();
+
     const studies = [
         {
             id: 1,
@@ -58,6 +61,14 @@ const StudyHome = ({ onSelectStudy, isDarkMode }) => {
             description: 'Explore causal graphs from indexed overlap studies across various units.',
             icon: Network,
             color: '#e11d48',
+        },
+        {
+            id: 'wind',
+            title: 'Wind Study',
+            description: 'Animate causal graph evolution across sliding windows for wind turbine segments.',
+            icon: Wind,
+            color: '#0ea5e9',
+            route: '/wind-study',
         }
     ];
 
@@ -82,10 +93,13 @@ const StudyHome = ({ onSelectStudy, isDarkMode }) => {
                             key={study.id}
                             className={`group cursor-pointer border p-5 flex flex-col gap-3 transition-colors duration-150 ${
                                 isDarkMode
-                                    ? 'bg-[#252526] border-[#3e3e42] hover:border-blue-600 hover:bg-[#2d2d30]'
-                                    : 'bg-white border-gray-200 hover:border-blue-600 hover:bg-gray-50'
+                                    ? 'bg-[#252526] border-[#3e3e42] hover:bg-[#2d2d30]'
+                                    : 'bg-white border-gray-200 hover:bg-gray-50'
                             }`}
-                            onClick={() => onSelectStudy(study.id)}
+                            style={{ '--hover-border': study.color }}
+                            onMouseEnter={e => e.currentTarget.style.borderColor = study.color}
+                            onMouseLeave={e => e.currentTarget.style.borderColor = isDarkMode ? '#3e3e42' : '#e5e7eb'}
+                            onClick={() => study.route ? navigate(study.route) : onSelectStudy(study.id)}
                         >
                             <div
                                 className="w-9 h-9 flex items-center justify-center"
